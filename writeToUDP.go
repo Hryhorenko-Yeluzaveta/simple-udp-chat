@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -17,7 +19,14 @@ func main() {
 	if err != nil {
 		log.Fatal("Помилка з'єднання: ", err)
 	}
-	defer connection.Close()
+
+	closeSignal := make(chan os.Signal, 1)
+	signal.Notify(closeSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-closeSignal
+		connection.Close()
+		os.Exit(0)
+	}()
 
 	fmt.Println("Відправляємо повідомлення на 9000")
 
@@ -31,7 +40,7 @@ func main() {
 		var message string
 		message = scanner.Text()
 		if err := scanner.Err(); err != nil {
-			fmt.Println("помилка читання повідомлення: ", err)
+			fmt.Println("помилка зчитування повідомлення: ", err)
 			continue
 		}
 

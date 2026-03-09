@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -15,7 +18,15 @@ func main() {
 	if err != nil {
 		log.Fatal("Помилка з'єднання: ", err)
 	}
-	defer connection.Close()
+
+	closeSignal := make(chan os.Signal, 1)
+	signal.Notify(closeSignal, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-closeSignal
+		connection.Close()
+		fmt.Println("З'єднання розірвано")
+		os.Exit(0)
+	}()
 
 	fmt.Println("Слухаємо повідомлення на 9000")
 
@@ -24,7 +35,7 @@ func main() {
 		msg, addrFrom, err := connection.ReadFromUDP(buffer)
 		if err != nil {
 			fmt.Println("помилка читання повідомлення: ", err)
-			continue
+			break
 		}
 		fmt.Println("Отримано від: ", addrFrom, "Повідомлення: ", string(buffer[:msg]))
 	}
